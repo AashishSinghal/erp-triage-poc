@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GetQueueAttributesCommand } from '@aws-sdk/client-sqs';
 import { ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import { ListFunctionsCommand } from '@aws-sdk/client-lambda';
@@ -13,6 +13,7 @@ export type HealthStatus = 'ok' | 'degraded';
 
 @Injectable()
 export class HealthService {
+  private readonly logger = new Logger(HealthService.name);
   private readonly config = getIncidentConfig();
   private readonly dynamoClient = createDynamoClient(this.config.aws);
   private readonly sqsClient = createSqsClient(this.config.aws);
@@ -31,6 +32,10 @@ export class HealthService {
       dynamo.status === 'ok' && sqs.status === 'ok' && lambda.status === 'ok'
         ? 'ok'
         : 'degraded';
+
+    if (overall !== 'ok') {
+      this.logger.warn('Health check degraded');
+    }
 
     return {
       status: overall,

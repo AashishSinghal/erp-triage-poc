@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SendMessageCommand } from '@aws-sdk/client-sqs';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
@@ -6,7 +6,7 @@ import { CreateIncidentDto } from './dto/create-incident.dto';
 import { IncidentStatus } from './dto/incident.enums';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { IncidentEntity } from './entities/incident.entity';
-import { createDynamoClient, createSqsClient, getIncidentConfig } from '../config/incidents.config';
+import { createDynamoClient, createSqsClient, getIncidentConfig } from '../config';
 
 const INCIDENT_PK_PREFIX = 'INCIDENT#';
 const INCIDENT_SK = 'METADATA';
@@ -14,6 +14,7 @@ const DEFAULT_PAGE_LIMIT = 25;
 
 @Injectable()
 export class IncidentService {
+  private readonly logger = new Logger(IncidentService.name);
   private readonly config = getIncidentConfig();
   private readonly docClient = DynamoDBDocumentClient.from(
     createDynamoClient(this.config.aws),
@@ -58,6 +59,7 @@ export class IncidentService {
       }),
     );
 
+    this.logger.log(`Incident created incidentId=${id}`);
     return { id, status: incident.status };
   }
 
@@ -98,10 +100,12 @@ export class IncidentService {
     );
 
     if (!response.Item) {
+      this.logger.warn(`Incident not found incidentId=${id}`);
       return null;
     }
 
     const { PK, SK, ...rest } = response.Item;
+    this.logger.log(`Incident fetched incidentId=${id}`);
     return rest as IncidentEntity;
   }
 
@@ -141,28 +145,38 @@ export class IncidentService {
 
     const attributes = response.Attributes ?? {};
     const { PK, SK, ...rest } = attributes;
+    this.logger.log(`Incident updated incidentId=${id}`);
     return rest as IncidentEntity;
   }
 
   async remove(id: string) {
-    await this.docClient.send(
-      new UpdateCommand({
-        TableName: this.config.tableName,
-        Key: {
-          PK: `${INCIDENT_PK_PREFIX}${id}`,
-          SK: INCIDENT_SK,
-        },
-        UpdateExpression: 'SET #status = :status, #updatedAt = :updatedAt',
-        ExpressionAttributeNames: {
-          '#status': 'status',
-          '#updatedAt': 'updatedAt',
-        },
-        ExpressionAttributeValues: {
-          ':status': IncidentStatus.FAILED,
-          ':updatedAt': new Date().toISOString(),
-        },
-      }),
-    );
+    try {
+      await this.docClient.send(
+        new UpdateCommand({
+          TableName: this.config.tableName,
+          Key: {
+            PK: `${INCIDENT_PK_PREFIX}${id}`,
+            SK: INCIDENT_SK,
+          },
+          UpdateExpression: 'SET #status = :status, #updatedAt = :updatedAt',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+            '#updatedAt': 'updatedAt',
+          },
+          ExpressionAttributeValues: {
+            ':status': IncidentStatus.FAILED,
+            ':updatedAt': new Date().toISOString(),
+          },
+        }),
+      );
+      this.logger.log(`Incident removed incidentId=${id}`);
+    } catch (error) {
+      this.logger.error(
+        `Incident remove failed incidentId=${id}`,
+        (error as Error).stack,
+      );
+      throw error;
+    }
 
     return { id };
   }
