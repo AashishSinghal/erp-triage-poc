@@ -13,7 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Incident } from "@/types/incident";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/use-toast";
 
 export const Route = createFileRoute("/incidents/$incidentId")({
   loader: async ({ params }) => {

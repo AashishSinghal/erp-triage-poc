@@ -5,7 +5,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router"
 import "./index.css"
 
 import { routeTree } from "./routeTree.gen"
-import { ToastProvider } from "@/components/ui/toast"
+import { ToastProvider } from "@/components/ui/toast-provider"
 
 const router = createRouter({ routeTree })
 
