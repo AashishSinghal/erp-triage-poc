@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   NotFoundException,
   Param,
   Patch,
@@ -13,13 +12,13 @@ import {
 import { IncidentService } from './incidents.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
+import { Environment, ErpModule, IncidentStatus, Severity } from './dto/incident.enums';
 
 @Controller('incidents')
 export class IncidentController {
   constructor(private readonly incidentService: IncidentService) {}
 
   @Post()
-  @HttpCode(202)
   create(@Body() createIncidentDto: CreateIncidentDto) {
     return this.incidentService.create(createIncidentDto);
   }
@@ -28,9 +27,26 @@ export class IncidentController {
   findAll(
     @Query('limit') limit?: string,
     @Query('nextToken') nextToken?: string,
+    @Query('search') search?: string,
+    @Query('erpModule') erpModule?: ErpModule,
+    @Query('environment') environment?: Environment,
+    @Query('status') status?: IncidentStatus,
+    @Query('severity') severity?: Severity,
+    @Query('sortBy') sortBy?: 'createdAt' | 'updatedAt',
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
   ) {
     const parsedLimit = limit ? Number(limit) : undefined;
-    return this.incidentService.findAll(parsedLimit, nextToken);
+    return this.incidentService.findAll({
+      limit: parsedLimit,
+      nextToken,
+      search,
+      erpModule,
+      environment,
+      status,
+      severity,
+      sortBy,
+      sortOrder,
+    });
   }
 
   @Get(':id')
@@ -48,6 +64,15 @@ export class IncidentController {
     @Body() updateIncidentDto: UpdateIncidentDto,
   ) {
     return this.incidentService.update(id, updateIncidentDto);
+  }
+
+  @Post(':id/retry-enrichment')
+  async retryEnrichment(@Param('id') id: string) {
+    const incident = await this.incidentService.retryEnrichment(id);
+    if (!incident) {
+      throw new NotFoundException(`Incident ${id} not found`);
+    }
+    return incident;
   }
 
   @Delete(':id')

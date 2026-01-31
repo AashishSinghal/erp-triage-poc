@@ -12,7 +12,7 @@ export class IncidentEntity {
   description: string;
   erpModule: ErpModule;
   environment: Environment;
-  businessUnit: string;
+  businessUnit?: string;
   status: IncidentStatus;
   severity?: Severity;
   category?: IncidentCategory;

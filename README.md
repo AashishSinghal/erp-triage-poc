@@ -15,10 +15,17 @@ flowchart LR
   FE -->|POST /incidents| BE[Backend API]
   BE -->|PutItem| DDB[(DynamoDB)]
   BE -->|OpenAI enrich| OAI[OpenAI API]
-  BE -->|UpdateItem (summary/suggestion)| DDB
+  BE -->|UpdateItem summary or suggestion| DDB
   FE -->|GET /incidents| BE
   FE -->|GET /incidents/:id| BE
 ```
+
+## Prerequisites
+
+- Node.js 18+ and npm
+- Docker Desktop (for LocalStack) with Docker Compose
+- AWS CLI (required by `backend/scripts/localstack-init.sh`)
+- An OpenAI API key (for enrichment)
 
 ## Local Development (Full Stack)
 
@@ -73,8 +80,9 @@ OPENAI_MODEL=gpt-4o-mini
 
 ### Frontend (optional)
 
-The frontend expects the backend at `http://localhost:3000`. If you deploy, update
-`frontend/src/services/incidents.ts` to point to your API URL.
+The frontend expects the backend at `http://localhost:3000`. If you deploy, set
+`VITE_API_URL` in a `frontend/.env` (or `frontend/.env.local`) to your API URL.
+This is optional for local development.
 
 ## Production Notes
 

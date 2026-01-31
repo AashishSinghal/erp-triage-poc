@@ -19,8 +19,16 @@ async function bootstrap() {
       }),
     },
   );
+  const allowedOrigins = (
+    process.env.FRONTEND_ORIGINS ??
+    'http://localhost:5173,https://incident-hub.netlify.app'
+  )
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: ['http://localhost:5173'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });

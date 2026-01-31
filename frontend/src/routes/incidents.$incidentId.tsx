@@ -1,9 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { formatRelative } from "date-fns";
 
-import { fetchIncident } from "@/services/incidents";
+import { fetchIncident, retryIncidentEnrichment } from "@/services/incidents";
 import { Header } from "@/components/incidents/Header";
-import { MoveLeft } from "lucide-react";
+import { MoveLeft, RotateCw } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/incidents/$incidentId")({
   loader: async ({ params }) => {
@@ -14,7 +22,8 @@ export const Route = createFileRoute("/incidents/$incidentId")({
 });
 
 function IncidentDetail() {
-  const { incident } = Route.useLoaderData();
+  const { incident: initialIncident } = Route.useLoaderData();
+  const [incident, setIncident] = useState(initialIncident);
   const createdAt = incident?.createdAt
     ? formatRelative(new Date(incident.createdAt), new Date())
     : "-";
@@ -34,6 +43,28 @@ function IncidentDetail() {
         return "border-slate-200 bg-slate-50 text-slate-600";
     }
   })();
+  const [copied, setCopied] = useState(false);
+  const handleCopyId = async () => {
+    if (!incident?.id) return;
+    try {
+      await navigator.clipboard.writeText(incident.id);
+      setCopied(true);
+    } catch {
+      // noop
+    }
+  };
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timeout);
+  }, [copied]);
+
+  const retryMutation = useMutation({
+    mutationFn: () => retryIncidentEnrichment(incident?.id ?? ""),
+    onSuccess: (data) => {
+      setIncident(data);
+    },
+  });
 
   return (
     <div className="app-shell min-h-screen">
@@ -53,17 +84,42 @@ function IncidentDetail() {
               {incident?.title ?? "Incident"}
             </h2>
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase ${statusClass}`}
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase ${statusClass} cursor-pointer`}
             >
               {status}
             </span>
+            {status === "FAILED" && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800 cursor-pointer"
+                disabled={retryMutation.isPending}
+                onClick={() => retryMutation.mutate()}
+                title="Retry enrichment"
+              >
+                <RotateCw className="h-3 w-3" />
+                {retryMutation.isPending ? "Retrying" : "Retry"}
+              </button>
+            )}
           </div>
-          <span>
-            Incident ID:{" "}
-            <span className="font-mono text-slate-700">
-              {incident?.id ?? "N/A"}
-            </span>
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={handleCopyId}
+                  className="group inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-800"
+                >
+                  <span className="uppercase tracking-wide text-[10px] text-slate-500">
+                    Incident ID
+                  </span>
+                  <span className="font-mono text-slate-700">
+                    {incident?.id ?? "N/A"}
+                  </span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{copied ? "Copied" : "Click to copy"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
