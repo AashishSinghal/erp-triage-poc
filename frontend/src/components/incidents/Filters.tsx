@@ -1,8 +1,14 @@
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Environment, ErpModule } from "@/types/incident"
-import { Filter, Search } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Environment, ErpModule } from "@/types/incident";
+import { Filter, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,24 +16,23 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 type FiltersProps = {
-  search: string
-  onSearchChange: (value: string) => void
-  erpModule: ErpModule | ""
-  onModuleChange: (value: ErpModule | "") => void
-  environment: Environment | ""
-  onEnvironmentChange: (value: Environment | "") => void
-  sortBy: "createdAt" | "updatedAt"
-  onSortByChange: (value: "createdAt" | "updatedAt") => void
-  sortOrder: "asc" | "desc"
-  onSortOrderChange: (value: "asc" | "desc") => void
-  limit: number
-  onLimitChange: (value: number) => void
-  onClear: () => void
-  resultCount: number
-}
+  search: string;
+  onSearchChange: (value: string) => void;
+  erpModule: ErpModule | "";
+  onModuleChange: (value: ErpModule | "") => void;
+  environment: Environment | "";
+  onEnvironmentChange: (value: Environment | "") => void;
+  sortBy: "createdAt" | "updatedAt";
+  onSortByChange: (value: "createdAt" | "updatedAt") => void;
+  sortOrder: "asc" | "desc";
+  onSortOrderChange: (value: "asc" | "desc") => void;
+  limit: number;
+  onLimitChange: (value: number) => void;
+  onClear: () => void;
+};
 
 export const Filters = ({
   search,
@@ -43,7 +48,6 @@ export const Filters = ({
   limit,
   onLimitChange,
   onClear,
-  resultCount,
 }: FiltersProps) => {
   return (
     <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-sm backdrop-blur">
@@ -81,7 +85,12 @@ export const Filters = ({
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup className="pt-1 space-y-2">
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <Select value={erpModule} onValueChange={(value) => onModuleChange(value as ErpModule)}>
+                    <Select
+                      value={erpModule}
+                      onValueChange={(value) =>
+                        onModuleChange(value as ErpModule)
+                      }
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Filter by module" />
                       </SelectTrigger>
@@ -93,7 +102,12 @@ export const Filters = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select value={environment} onValueChange={(value) => onEnvironmentChange(value as Environment)}>
+                    <Select
+                      value={environment}
+                      onValueChange={(value) =>
+                        onEnvironmentChange(value as Environment)
+                      }
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Filter by environment" />
                       </SelectTrigger>
@@ -105,7 +119,12 @@ export const Filters = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Select value={sortBy} onValueChange={(value) => onSortByChange(value as "createdAt" | "updatedAt")}>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(value) =>
+                        onSortByChange(value as "createdAt" | "updatedAt")
+                      }
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
@@ -116,7 +135,12 @@ export const Filters = ({
                     </Select>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <Select value={sortOrder} onValueChange={(value) => onSortOrderChange(value as "asc" | "desc")}>
+                    <Select
+                      value={sortOrder}
+                      onValueChange={(value) =>
+                        onSortOrderChange(value as "asc" | "desc")
+                      }
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Sort order" />
                       </SelectTrigger>
@@ -125,7 +149,10 @@ export const Filters = ({
                         <SelectItem value="asc">Oldest first</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={String(limit)} onValueChange={(value) => onLimitChange(Number(value))}>
+                    <Select
+                      value={String(limit)}
+                      onValueChange={(value) => onLimitChange(Number(value))}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Limit" />
                       </SelectTrigger>
@@ -137,9 +164,6 @@ export const Filters = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="flex h-10 items-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 text-sm text-slate-500">
-                      {resultCount} incident{resultCount === 1 ? "" : "s"} shown
-                    </div>
                   </div>
                 </DropdownMenuGroup>
               </DropdownMenuContent>
@@ -151,5 +175,5 @@ export const Filters = ({
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

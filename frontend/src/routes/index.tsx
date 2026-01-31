@@ -16,9 +16,11 @@ export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => {
     const limitRaw = search.limit
     const limit =
-      typeof limitRaw === "string" && Number.isFinite(Number(limitRaw))
-        ? Number(limitRaw)
-        : undefined
+      typeof limitRaw === "number"
+        ? limitRaw
+        : typeof limitRaw === "string" && Number.isFinite(Number(limitRaw))
+          ? Number(limitRaw)
+          : undefined
     return {
       search: typeof search.search === "string" ? search.search : "",
       erpModule: typeof search.erpModule === "string" ? (search.erpModule as ErpModule) : "",

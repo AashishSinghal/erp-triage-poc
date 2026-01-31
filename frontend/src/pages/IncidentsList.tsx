@@ -1,28 +1,22 @@
-import { useEffect, useMemo, useState } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 
-import { Header } from "@/components/incidents/Header"
-import { Filters } from "@/components/incidents/Filters"
-import { IncidentsTable } from "@/components/incidents/IncidentsTable"
-import { fetchIncidents } from "@/services/incidents"
+import { Header } from "@/components/incidents/Header";
+import { Filters } from "@/components/incidents/Filters";
+import { IncidentsTable } from "@/components/incidents/IncidentsTable";
+import { fetchIncidents } from "@/services/incidents";
 
 export const IncidentsList = () => {
-  const searchParams = useSearch({ from: "/" })
-  const navigate = useNavigate({ from: "/" })
-  const {
-    search,
-    erpModule,
-    environment,
-    sortBy,
-    sortOrder,
-    limit,
-  } = searchParams
-  const [searchInput, setSearchInput] = useState(search)
+  const searchParams = useSearch({ from: "/" });
+  const navigate = useNavigate({ from: "/" });
+  const { search, erpModule, environment, sortBy, sortOrder, limit } =
+    searchParams;
+  const [searchInput, setSearchInput] = useState(search);
 
   useEffect(() => {
-    setSearchInput(search)
-  }, [search])
+    setSearchInput(search);
+  }, [search]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -31,14 +25,22 @@ export const IncidentsList = () => {
           ...prev,
           search: searchInput,
         }),
-      })
-    }, 300)
+      });
+    }, 300);
 
-    return () => clearTimeout(handle)
-  }, [navigate, searchInput])
+    return () => clearTimeout(handle);
+  }, [navigate, searchInput]);
 
   const incidentsQuery = useQuery({
-    queryKey: ["incidents", search, erpModule, environment, sortBy, sortOrder, limit],
+    queryKey: [
+      "incidents",
+      search,
+      erpModule,
+      environment,
+      sortBy,
+      sortOrder,
+      limit,
+    ],
     queryFn: () =>
       fetchIncidents({
         search: search || undefined,
@@ -48,9 +50,12 @@ export const IncidentsList = () => {
         sortOrder,
         limit: typeof limit === "number" ? limit : undefined,
       }),
-  })
+  });
 
-  const items = useMemo(() => incidentsQuery.data?.items ?? [], [incidentsQuery.data])
+  const items = useMemo(
+    () => incidentsQuery.data?.items ?? [],
+    [incidentsQuery.data],
+  );
 
   return (
     <div className="app-shell min-h-screen">
@@ -99,9 +104,8 @@ export const IncidentsList = () => {
                   erpModule: "",
                   environment: "",
                 }),
-              })
+              });
             }}
-            resultCount={items.length}
           />
 
           {incidentsQuery.isLoading && (
@@ -120,5 +124,5 @@ export const IncidentsList = () => {
         </section>
       </main>
     </div>
-  )
-}
+  );
+};
