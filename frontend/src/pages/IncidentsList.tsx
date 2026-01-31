@@ -29,7 +29,7 @@ export const IncidentsList = () => {
       navigate({
         search: (prev) => ({
           ...prev,
-          search: searchInput || undefined,
+          search: searchInput,
         }),
       })
     }, 300)
@@ -64,13 +64,13 @@ export const IncidentsList = () => {
             erpModule={erpModule}
             onModuleChange={(value) =>
               navigate({
-                search: (prev) => ({ ...prev, erpModule: value || undefined }),
+                search: (prev) => ({ ...prev, erpModule: value || "" }),
               })
             }
             environment={environment}
             onEnvironmentChange={(value) =>
               navigate({
-                search: (prev) => ({ ...prev, environment: value || undefined }),
+                search: (prev) => ({ ...prev, environment: value || "" }),
               })
             }
             sortBy={sortBy}
@@ -95,9 +95,9 @@ export const IncidentsList = () => {
               navigate({
                 search: (prev) => ({
                   ...prev,
-                  search: undefined,
-                  erpModule: undefined,
-                  environment: undefined,
+                  search: "",
+                  erpModule: "",
+                  environment: "",
                 }),
               })
             }}

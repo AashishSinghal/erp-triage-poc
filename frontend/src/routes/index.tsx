@@ -3,6 +3,15 @@ import type { Environment, ErpModule } from "@/types/incident"
 
 import { IncidentsList } from "@/pages/IncidentsList"
 
+type IncidentSearchParams = {
+  search: string
+  erpModule: ErpModule | ""
+  environment: Environment | ""
+  sortBy: "createdAt" | "updatedAt"
+  sortOrder: "asc" | "desc"
+  limit?: number
+}
+
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => {
     const limitRaw = search.limit
@@ -26,7 +35,7 @@ export const Route = createFileRoute("/")({
           ? search.sortOrder
           : "desc",
       limit,
-    }
+    } as IncidentSearchParams
   },
   component: IncidentsList,
 })

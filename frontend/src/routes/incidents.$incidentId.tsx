@@ -73,6 +73,14 @@ function IncidentDetail() {
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">
         <Link
           to="/"
+          search={{
+            search: "",
+            erpModule: "",
+            environment: "",
+            sortBy: "updatedAt",
+            sortOrder: "desc",
+            limit: undefined,
+          }}
           className="text-xs uppercase tracking-[0.2em] text-slate-500 flex gap-2 mb-2"
         >
           <MoveLeft className="h-4 w-4" />
