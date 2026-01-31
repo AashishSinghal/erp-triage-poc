@@ -24,7 +24,33 @@ export const Route = createFileRoute("/incidents/$incidentId")({
 
 function IncidentDetail() {
   const { incident: initialIncident } = Route.useLoaderData();
-  if (!initialIncident) {
+  const [incident, setIncident] = useState<Incident | null>(
+    initialIncident ?? null,
+  );
+  const [copied, setCopied] = useState(false);
+  const handleCopyId = async () => {
+    if (!incident?.id) return;
+    try {
+      await navigator.clipboard.writeText(incident.id);
+      setCopied(true);
+    } catch {
+      // noop
+    }
+  };
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(timeout);
+  }, [copied]);
+
+  const retryMutation = useMutation({
+    mutationFn: () => retryIncidentEnrichment(incident?.id ?? ""),
+    onSuccess: (data) => {
+      setIncident(data);
+    },
+  });
+
+  if (!incident) {
     return (
       <div className="app-shell min-h-screen">
         <Header />
@@ -37,7 +63,6 @@ function IncidentDetail() {
     );
   }
 
-  const [incident, setIncident] = useState<Incident>(initialIncident);
   const createdAt = formatRelative(new Date(incident.createdAt), new Date());
   const updatedAt = formatRelative(new Date(incident.updatedAt), new Date());
   const status = incident.status;
@@ -66,29 +91,6 @@ function IncidentDetail() {
         return "border-slate-200 bg-slate-50 text-slate-600";
     }
   })();
-  const [copied, setCopied] = useState(false);
-  const handleCopyId = async () => {
-    if (!incident?.id) return;
-    try {
-      await navigator.clipboard.writeText(incident.id);
-      setCopied(true);
-    } catch {
-      // noop
-    }
-  };
-  useEffect(() => {
-    if (!copied) return;
-    const timeout = setTimeout(() => setCopied(false), 1500);
-    return () => clearTimeout(timeout);
-  }, [copied]);
-
-  const retryMutation = useMutation({
-    mutationFn: () => retryIncidentEnrichment(incident?.id ?? ""),
-    onSuccess: (data) => {
-      setIncident(data);
-    },
-  });
-
   return (
     <div className="app-shell min-h-screen">
       <Header />

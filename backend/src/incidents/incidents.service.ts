@@ -207,8 +207,18 @@ export class IncidentService {
       return 0;
     }
     try {
-      const parsed = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      return typeof parsed.offset === 'number' ? parsed.offset : 0;
+      const parsed: unknown = JSON.parse(
+        Buffer.from(token, 'base64').toString('utf-8'),
+      );
+      if (
+        typeof parsed === 'object' &&
+        parsed !== null &&
+        'offset' in parsed &&
+        typeof (parsed as { offset?: unknown }).offset === 'number'
+      ) {
+        return (parsed as { offset: number }).offset;
+      }
+      return 0;
     } catch {
       return 0;
     }
@@ -329,8 +339,8 @@ export class IncidentService {
     const sortBy = query.sortBy ?? DEFAULT_SORT_BY;
     const sortOrder = query.sortOrder ?? DEFAULT_SORT_ORDER;
     const sortedItems = [...items].sort((a, b) => {
-      const left = a[sortBy] ?? '';
-      const right = b[sortBy] ?? '';
+      const left = typeof a[sortBy] === 'string' ? a[sortBy] : '';
+      const right = typeof b[sortBy] === 'string' ? b[sortBy] : '';
       const leftTime = Date.parse(left);
       const rightTime = Date.parse(right);
       const comparison =
