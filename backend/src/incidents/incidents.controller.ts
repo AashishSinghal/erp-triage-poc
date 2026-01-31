@@ -12,7 +12,12 @@ import {
 import { IncidentService } from './incidents.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
-import { Environment, ErpModule, IncidentStatus, Severity } from './dto/incident.enums';
+import {
+  Environment,
+  ErpModule,
+  IncidentStatus,
+  Severity,
+} from './dto/incident.enums';
 
 @Controller('incidents')
 export class IncidentController {

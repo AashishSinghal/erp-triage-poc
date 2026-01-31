@@ -92,8 +92,11 @@ export class IncidentService {
     updates: Partial<IncidentEntity>,
     options: { addUpdatedAt?: boolean } = { addUpdatedAt: true },
   ) {
-    const { updateExpression, expressionAttributeNames, expressionAttributeValues } =
-      buildUpdateExpression(updates, options);
+    const {
+      updateExpression,
+      expressionAttributeNames,
+      expressionAttributeValues,
+    } = buildUpdateExpression(updates, options);
 
     await this.docClient.send(
       new UpdateCommand({
@@ -284,9 +287,10 @@ export class IncidentService {
       const right = b[sortBy] ?? '';
       const leftTime = Date.parse(left);
       const rightTime = Date.parse(right);
-      const comparison = Number.isNaN(leftTime) || Number.isNaN(rightTime)
-        ? String(left).localeCompare(String(right))
-        : leftTime - rightTime;
+      const comparison =
+        Number.isNaN(leftTime) || Number.isNaN(rightTime)
+          ? String(left).localeCompare(String(right))
+          : leftTime - rightTime;
       return sortOrder === 'asc' ? comparison : -comparison;
     });
     const token = response.LastEvaluatedKey
@@ -406,9 +410,7 @@ export class IncidentService {
     };
 
     if (rest.status !== IncidentStatus.FAILED) {
-      throw new BadRequestException(
-        `Incident ${id} is not in FAILED status`,
-      );
+      throw new BadRequestException(`Incident ${id} is not in FAILED status`);
     }
 
     try {
