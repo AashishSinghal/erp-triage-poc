@@ -18,6 +18,7 @@ import {
   IncidentStatus,
   Severity,
 } from './dto/incident.enums';
+import { IncidentQueryDto } from './dto/incident-query.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { IncidentEntity } from './entities/incident.entity';
 import { createDynamoClient, getIncidentConfig } from '../config';
@@ -34,17 +35,7 @@ const DEFAULT_PAGE_LIMIT = 25;
 const DEFAULT_SORT_BY: 'createdAt' | 'updatedAt' = 'updatedAt';
 const DEFAULT_SORT_ORDER: 'asc' | 'desc' = 'desc';
 
-type IncidentQuery = {
-  limit?: number;
-  nextToken?: string;
-  search?: string;
-  erpModule?: ErpModule;
-  environment?: Environment;
-  status?: IncidentStatus;
-  severity?: Severity;
-  sortBy?: 'createdAt' | 'updatedAt';
-  sortOrder?: 'asc' | 'desc';
-};
+type IncidentQuery = IncidentQueryDto;
 
 @Injectable()
 export class IncidentService {
@@ -146,6 +137,12 @@ export class IncidentService {
       ':sk': INCIDENT_SK,
     };
     const expressionAttributeNames: Record<string, string> = {};
+
+    if (!query.status) {
+      filterExpressions.push('#status <> :deletedStatus');
+      expressionAttributeNames['#status'] = 'status';
+      expressionAttributeValues[':deletedStatus'] = IncidentStatus.DELETED;
+    }
 
     if (includeSearch && query.search) {
       filterExpressions.push(
@@ -381,6 +378,10 @@ export class IncidentService {
     }
 
     const { PK, SK, ...rest } = response.Item;
+    if (rest.status === IncidentStatus.DELETED) {
+      this.logger.warn(`Incident deleted incidentId=${id}`);
+      return null;
+    }
     this.logger.log(`Incident fetched incidentId=${id}`);
     return rest;
   }
@@ -416,6 +417,7 @@ export class IncidentService {
   async remove(id: string) {
     this.logger.warn(`Remove incident requested incidentId=${id}`);
     try {
+      const deletedAt = new Date().toISOString();
       await this.docClient.send(
         new UpdateCommand({
           TableName: this.config.tableName,
@@ -423,14 +425,17 @@ export class IncidentService {
             PK: `${INCIDENT_PK_PREFIX}${id}`,
             SK: INCIDENT_SK,
           },
-          UpdateExpression: 'SET #status = :status, #updatedAt = :updatedAt',
+          UpdateExpression:
+            'SET #status = :status, #updatedAt = :updatedAt, #deletedAt = :deletedAt',
           ExpressionAttributeNames: {
             '#status': 'status',
             '#updatedAt': 'updatedAt',
+            '#deletedAt': 'deletedAt',
           },
           ExpressionAttributeValues: {
-            ':status': IncidentStatus.FAILED,
-            ':updatedAt': new Date().toISOString(),
+            ':status': IncidentStatus.DELETED,
+            ':updatedAt': deletedAt,
+            ':deletedAt': deletedAt,
           },
         }),
       );

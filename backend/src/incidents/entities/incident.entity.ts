@@ -20,4 +20,5 @@ export class IncidentEntity {
   suggestion?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 }

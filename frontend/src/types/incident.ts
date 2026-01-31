@@ -18,6 +18,7 @@ export const IncidentStatus = {
   PENDING: 'PENDING',
   ENRICHED: 'ENRICHED',
   FAILED: 'FAILED',
+  DELETED: 'DELETED',
 } as const
 export type IncidentStatus = (typeof IncidentStatus)[keyof typeof IncidentStatus]
 

@@ -16,6 +16,7 @@ export enum IncidentStatus {
   PENDING = 'PENDING',
   ENRICHED = 'ENRICHED',
   FAILED = 'FAILED',
+  DELETED = 'DELETED',
 }
 
 export enum Severity {

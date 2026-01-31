@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/toast"
 import { createIncident } from "@/services/incidents"
 import { Environment, ErpModule } from "@/types/incident"
 import type { CreateIncidentInput } from "@/types/incident"
@@ -24,6 +25,7 @@ const defaultForm: CreateIncidentInput = {
 export const NewIncidentDialog = () => {
   const queryClient = useQueryClient()
   const navigate = useNavigate({ from: "/" })
+  const { showToast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
   const [formState, setFormState] = useState<CreateIncidentInput>(defaultForm)
 
@@ -39,6 +41,13 @@ export const NewIncidentDialog = () => {
           params: { incidentId: incident.id },
         })
       }
+    },
+    onError: (error) => {
+      showToast({
+        title: "Failed to create incident",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      })
     },
   })
 

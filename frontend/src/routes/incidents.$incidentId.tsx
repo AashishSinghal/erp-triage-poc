@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Incident } from "@/types/incident";
+import { useToast } from "@/components/ui/toast";
 
 export const Route = createFileRoute("/incidents/$incidentId")({
   loader: async ({ params }) => {
@@ -27,6 +28,7 @@ function IncidentDetail() {
   const [incident, setIncident] = useState<Incident | null>(
     initialIncident ?? null,
   );
+  const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
   const handleCopyId = async () => {
     if (!incident?.id) return;
@@ -48,9 +50,16 @@ function IncidentDetail() {
     onSuccess: (data) => {
       setIncident(data);
     },
+    onError: (error) => {
+      showToast({
+        title: "Failed to retry enrichment",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    },
   });
 
-  if (!incident) {
+  if (!incident || incident.status === "DELETED") {
     return (
       <div className="app-shell min-h-screen">
         <Header />

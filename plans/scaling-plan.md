@@ -47,6 +47,16 @@ This document outlines the current system limits, where it will fail first, and 
 - Reduce DynamoDB reads by 60–90% on hot data.
 - Faster read latency.
 
+### Trade-offs / Limits
+- **Redis is a cache, not a flexible query engine.** It helps with hot reads but does not replace proper queryable indexes for many filters or sort options.
+- Without DynamoDB GSIs (or a search index), **cold reads and uncommon filters still require scans** and in-memory filtering.
+- Cache invalidation and pagination consistency add complexity (especially with frequent writes).
+
+### Improvement Plan (Query Flexibility)
+- **Short-term:** Keep only the top 1–2 filters and sort by `updatedAt`, and cache those list variants in Redis.
+- **Mid-term:** Add DynamoDB GSI(s) for the most common list filters to avoid scans.
+- **Long-term:** If filters grow, introduce a search/index store (e.g., OpenSearch) fed by DynamoDB Streams.
+
 ### Estimated Limits After Step 1
 - **Reads**: ~200–500 req/s
 - **Writes**: still ~2–5 req/s (unchanged)

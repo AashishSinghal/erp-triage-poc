@@ -12,12 +12,7 @@ import {
 import { IncidentService } from './incidents.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
-import {
-  Environment,
-  ErpModule,
-  IncidentStatus,
-  Severity,
-} from './dto/incident.enums';
+import { IncidentQueryDto } from './dto/incident-query.dto';
 
 @Controller('incidents')
 export class IncidentController {
@@ -29,29 +24,8 @@ export class IncidentController {
   }
 
   @Get()
-  findAll(
-    @Query('limit') limit?: string,
-    @Query('nextToken') nextToken?: string,
-    @Query('search') search?: string,
-    @Query('erpModule') erpModule?: ErpModule,
-    @Query('environment') environment?: Environment,
-    @Query('status') status?: IncidentStatus,
-    @Query('severity') severity?: Severity,
-    @Query('sortBy') sortBy?: 'createdAt' | 'updatedAt',
-    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
-  ) {
-    const parsedLimit = limit ? Number(limit) : undefined;
-    return this.incidentService.findAll({
-      limit: parsedLimit,
-      nextToken,
-      search,
-      erpModule,
-      environment,
-      status,
-      severity,
-      sortBy,
-      sortOrder,
-    });
+  findAll(@Query() query: IncidentQueryDto) {
+    return this.incidentService.findAll(query);
   }
 
   @Get(':id')
