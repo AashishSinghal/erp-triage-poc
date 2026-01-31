@@ -12,6 +12,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { Incident } from "@/types/incident";
 
 export const Route = createFileRoute("/incidents/$incidentId")({
   loader: async ({ params }) => {
@@ -23,14 +24,24 @@ export const Route = createFileRoute("/incidents/$incidentId")({
 
 function IncidentDetail() {
   const { incident: initialIncident } = Route.useLoaderData();
-  const [incident, setIncident] = useState(initialIncident);
-  const createdAt = incident?.createdAt
-    ? formatRelative(new Date(incident.createdAt), new Date())
-    : "-";
-  const updatedAt = incident?.updatedAt
-    ? formatRelative(new Date(incident.updatedAt), new Date())
-    : "-";
-  const status = incident?.status ?? "UNKNOWN";
+  if (!initialIncident) {
+    return (
+      <div className="app-shell min-h-screen">
+        <Header />
+        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">
+          <div className="rounded-2xl border border-red-200/60 bg-white p-6 text-sm text-red-600 shadow-sm">
+            Incident not found.
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const [incident, setIncident] = useState<Incident>(initialIncident);
+  const createdAt = formatRelative(new Date(incident.createdAt), new Date());
+  const updatedAt = formatRelative(new Date(incident.updatedAt), new Date());
+  const status = incident.status;
+  const severity = incident.severity ?? "UNKNOWN";
   const statusClass = (() => {
     switch (status) {
       case "ENRICHED":
@@ -39,6 +50,18 @@ function IncidentDetail() {
         return "border-amber-200 bg-amber-50 text-amber-700";
       case "FAILED":
         return "border-red-200 bg-red-50 text-red-700";
+      default:
+        return "border-slate-200 bg-slate-50 text-slate-600";
+    }
+  })();
+  const severityClass = (() => {
+    switch (severity) {
+      case "P1":
+        return "border-red-200 bg-red-50 text-red-700";
+      case "P2":
+        return "border-amber-200 bg-amber-50 text-amber-700";
+      case "P3":
+        return "border-emerald-200 bg-emerald-50 text-emerald-700";
       default:
         return "border-slate-200 bg-slate-50 text-slate-600";
     }
@@ -91,6 +114,11 @@ function IncidentDetail() {
             <h2 className="text-2xl font-semibold text-slate-900">
               {incident?.title ?? "Incident"}
             </h2>
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase ${severityClass} cursor-pointer`}
+            >
+              {severity}
+            </span>
             <span
               className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase ${statusClass} cursor-pointer`}
             >
