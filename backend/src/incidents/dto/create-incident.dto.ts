@@ -26,6 +26,6 @@ export class CreateIncidentDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(100)
-  businessUnit?: string;
+  @MaxLength(500)
+  businessUnit: string;
 }

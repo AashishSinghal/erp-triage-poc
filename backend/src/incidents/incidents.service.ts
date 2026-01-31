@@ -1,12 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SendMessageCommand } from '@aws-sdk/client-sqs';
 import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 import { CreateIncidentDto } from './dto/create-incident.dto';
-import { IncidentStatus } from './dto/incident.enums';
+import { IncidentCategory, IncidentStatus, Severity } from './dto/incident.enums';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { IncidentEntity } from './entities/incident.entity';
-import { createDynamoClient, createSqsClient, getIncidentConfig } from '../config';
+import { createDynamoClient, getIncidentConfig } from '../config';
+import { buildUpdateExpression } from '../shared/dynamo/update-expression';
+import {
+  createOpenAIClient,
+  createUserPrompt,
+  runEnrichment,
+} from '../openai/openai-client';
 
 const INCIDENT_PK_PREFIX = 'INCIDENT#';
 const INCIDENT_SK = 'METADATA';
@@ -24,11 +29,31 @@ export class IncidentService {
       },
     },
   );
-  private readonly sqsClient = createSqsClient(this.config.aws);
+  private readonly openai = createOpenAIClient(this.config.openAiApiKey);
+
+  private parseAiResponse(content: string) {
+    try {
+      const parsed = JSON.parse(content);
+      return {
+        severity: (parsed.severity as Severity) ?? Severity.P3,
+        category:
+          (parsed.category as IncidentCategory) ?? IncidentCategory.UNKNOWN,
+        summary: typeof parsed.summary === 'string' ? parsed.summary : undefined,
+        suggestion:
+          typeof parsed.suggestion === 'string' ? parsed.suggestion : undefined,
+      };
+    } catch {
+      return {
+        severity: Severity.P3,
+        category: IncidentCategory.UNKNOWN,
+      };
+    }
+  }
 
   async create(createIncidentDto: CreateIncidentDto) {
     const now = new Date().toISOString();
     const id = randomUUID();
+    this.logger.debug(`Create incident request received incidentId=${id}`);
     const incident: IncidentEntity = {
       id,
       title: createIncidentDto.title,
@@ -51,19 +76,52 @@ export class IncidentService {
         },
       }),
     );
+    this.logger.debug(`Incident persisted to DynamoDB incidentId=${id}`);
 
-    await this.sqsClient.send(
-      new SendMessageCommand({
-        QueueUrl: this.config.queueUrl,
-        MessageBody: JSON.stringify({ incidentId: id }),
+    const aiContent = await runEnrichment(
+      this.openai,
+      this.config.openAiModel,
+      createUserPrompt(incident.title, incident.description),
+    );
+    const enrichment = this.parseAiResponse(aiContent);
+    const { updateExpression, expressionAttributeNames, expressionAttributeValues } =
+      buildUpdateExpression(
+        {
+          status: IncidentStatus.ENRICHED,
+          severity: enrichment.severity,
+          category: enrichment.category,
+          summary: enrichment.summary ?? null,
+          suggestion: enrichment.suggestion ?? null,
+        },
+        { addUpdatedAt: true },
+      );
+
+    await this.docClient.send(
+      new UpdateCommand({
+        TableName: this.config.tableName,
+        Key: {
+          PK: `${INCIDENT_PK_PREFIX}${id}`,
+          SK: INCIDENT_SK,
+        },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues,
       }),
     );
 
+    incident.status = IncidentStatus.ENRICHED;
+    incident.severity = enrichment.severity;
+    incident.category = enrichment.category;
+    incident.summary = enrichment.summary;
+    incident.suggestion = enrichment.suggestion;
+    incident.updatedAt = (expressionAttributeValues[':updatedAt'] as string) ?? incident.updatedAt;
+
     this.logger.log(`Incident created incidentId=${id}`);
-    return { id, status: incident.status };
+    return incident;
   }
 
   async findAll(limit = DEFAULT_PAGE_LIMIT, nextToken?: string) {
+    this.logger.debug('List incidents request received');
     const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 100) : DEFAULT_PAGE_LIMIT;
     const exclusiveStartKey = nextToken ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8')) : undefined;
 
@@ -85,10 +143,12 @@ export class IncidentService {
       ? Buffer.from(JSON.stringify(response.LastEvaluatedKey), 'utf-8').toString('base64')
       : undefined;
 
+    this.logger.debug(`List incidents response count=${items.length}`);
     return { items, nextToken: token };
   }
 
   async findOne(id: string) {
+    this.logger.debug(`Fetch incident request received incidentId=${id}`);
     const response = await this.docClient.send(
       new GetCommand({
         TableName: this.config.tableName,
@@ -110,24 +170,9 @@ export class IncidentService {
   }
 
   async update(id: string, updateIncidentDto: UpdateIncidentDto) {
-    const now = new Date().toISOString();
-
-    const updateExpression: string[] = ['#updatedAt = :updatedAt'];
-    const expressionAttributeNames: Record<string, string> = {
-      '#updatedAt': 'updatedAt',
-    };
-    const expressionAttributeValues: Record<string, unknown> = {
-      ':updatedAt': now,
-    };
-
-    for (const [key, value] of Object.entries(updateIncidentDto)) {
-      if (value === undefined) {
-        continue;
-      }
-      updateExpression.push(`#${key} = :${key}`);
-      expressionAttributeNames[`#${key}`] = key;
-      expressionAttributeValues[`:${key}`] = value;
-    }
+    this.logger.debug(`Update incident request received incidentId=${id}`);
+    const { updateExpression, expressionAttributeNames, expressionAttributeValues } =
+      buildUpdateExpression<UpdateIncidentDto>(updateIncidentDto);
 
     const response = await this.docClient.send(
       new UpdateCommand({
@@ -136,7 +181,7 @@ export class IncidentService {
           PK: `${INCIDENT_PK_PREFIX}${id}`,
           SK: INCIDENT_SK,
         },
-        UpdateExpression: `SET ${updateExpression.join(', ')}`,
+        UpdateExpression: updateExpression,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
         ReturnValues: 'ALL_NEW',
@@ -150,6 +195,7 @@ export class IncidentService {
   }
 
   async remove(id: string) {
+    this.logger.warn(`Remove incident requested incidentId=${id}`);
     try {
       await this.docClient.send(
         new UpdateCommand({

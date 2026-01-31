@@ -6,7 +6,7 @@ describe('IncidentService', () => {
 
   beforeEach(async () => {
     process.env.DYNAMODB_TABLE_NAME = 'incidents-test';
-    process.env.SQS_QUEUE_URL = 'http://localhost:4566/000000000000/incidents-test';
+    process.env.OPENAI_API_KEY = 'test-key';
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [IncidentService],
