@@ -136,7 +136,7 @@ export class IncidentService {
     return updatedAt;
   }
 
-  private buildScanFilters(query: IncidentQuery) {
+  private buildScanFilters(query: IncidentQuery, includeSearch = true) {
     const filterExpressions: string[] = [
       'begins_with(PK, :pkPrefix)',
       'SK = :sk',
@@ -147,7 +147,7 @@ export class IncidentService {
     };
     const expressionAttributeNames: Record<string, string> = {};
 
-    if (query.search) {
+    if (includeSearch && query.search) {
       filterExpressions.push(
         '(contains(#title, :search) OR contains(#description, :search))',
       );
@@ -188,6 +188,62 @@ export class IncidentService {
           : undefined,
       expressionAttributeValues,
     };
+  }
+
+  private applySearchFilter(items: IncidentEntity[], term?: string) {
+    if (!term) {
+      return items;
+    }
+    const normalized = term.toLowerCase();
+    return items.filter((item) => {
+      const title = item.title?.toLowerCase() ?? '';
+      const description = item.description?.toLowerCase() ?? '';
+      return title.includes(normalized) || description.includes(normalized);
+    });
+  }
+
+  private decodeOffsetToken(token?: string) {
+    if (!token) {
+      return 0;
+    }
+    try {
+      const parsed = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
+      return typeof parsed.offset === 'number' ? parsed.offset : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private encodeOffsetToken(offset: number) {
+    return Buffer.from(JSON.stringify({ offset }), 'utf-8').toString('base64');
+  }
+
+  private async scanAllIncidents(
+    scanFilters: ReturnType<typeof this.buildScanFilters>,
+  ) {
+    const items: IncidentEntity[] = [];
+    let exclusiveStartKey: Record<string, unknown> | undefined;
+
+    do {
+      const response = await this.docClient.send(
+        new ScanCommand({
+          TableName: this.config.tableName,
+          Limit: 200,
+          ExclusiveStartKey: exclusiveStartKey,
+          FilterExpression: scanFilters.filterExpression,
+          ExpressionAttributeNames: scanFilters.expressionAttributeNames,
+          ExpressionAttributeValues: scanFilters.expressionAttributeValues,
+        }),
+      );
+
+      const batch = (response.Items ?? []).map(
+        ({ PK, SK, ...rest }) => rest,
+      ) as IncidentEntity[];
+      items.push(...batch);
+      exclusiveStartKey = response.LastEvaluatedKey;
+    } while (exclusiveStartKey);
+
+    return items;
   }
 
   async create(createIncidentDto: CreateIncidentDto) {
@@ -257,29 +313,19 @@ export class IncidentService {
 
   async findAll(query: IncidentQuery = {}) {
     this.logger.debug('List incidents request received');
+    this.logger.debug(
+      `List incidents query search=${query.search ?? ''} erpModule=${query.erpModule ?? ''} environment=${query.environment ?? ''} status=${query.status ?? ''} severity=${query.severity ?? ''} sortBy=${query.sortBy ?? ''} sortOrder=${query.sortOrder ?? ''} limit=${query.limit ?? ''}`,
+    );
     const safeLimit =
       Number.isFinite(query.limit) && (query.limit as number) > 0
         ? Math.min(query.limit as number, 100)
         : DEFAULT_PAGE_LIMIT;
-    const exclusiveStartKey = query.nextToken
-      ? JSON.parse(Buffer.from(query.nextToken, 'base64').toString('utf-8'))
-      : undefined;
-    const scanFilters = this.buildScanFilters(query);
-
-    const response = await this.docClient.send(
-      new ScanCommand({
-        TableName: this.config.tableName,
-        Limit: safeLimit,
-        ExclusiveStartKey: exclusiveStartKey,
-        FilterExpression: scanFilters.filterExpression,
-        ExpressionAttributeNames: scanFilters.expressionAttributeNames,
-        ExpressionAttributeValues: scanFilters.expressionAttributeValues,
-      }),
-    );
-
-    const items = (response.Items ?? []).map(
-      ({ PK, SK, ...rest }) => rest,
-    ) as IncidentEntity[];
+    const scanFilters = this.buildScanFilters(query, false);
+    const offset = this.decodeOffsetToken(query.nextToken);
+    const scannedItems = await this.scanAllIncidents(scanFilters);
+    this.logger.debug(`List incidents scanned count=${scannedItems.length}`);
+    const items = this.applySearchFilter(scannedItems, query.search);
+    this.logger.debug(`List incidents search-matched count=${items.length}`);
     const sortBy = query.sortBy ?? DEFAULT_SORT_BY;
     const sortOrder = query.sortOrder ?? DEFAULT_SORT_ORDER;
     const sortedItems = [...items].sort((a, b) => {
@@ -293,15 +339,18 @@ export class IncidentService {
           : leftTime - rightTime;
       return sortOrder === 'asc' ? comparison : -comparison;
     });
-    const token = response.LastEvaluatedKey
-      ? Buffer.from(
-          JSON.stringify(response.LastEvaluatedKey),
-          'utf-8',
-        ).toString('base64')
-      : undefined;
+    const pagedItems = sortedItems.slice(offset, offset + safeLimit);
+    this.logger.debug(
+      `List incidents page offset=${offset} limit=${safeLimit} returned=${pagedItems.length}`,
+    );
+    const nextOffset = offset + safeLimit;
+    const token =
+      pagedItems.length > 0 && nextOffset < sortedItems.length
+        ? this.encodeOffsetToken(nextOffset)
+        : undefined;
 
-    this.logger.debug(`List incidents response count=${sortedItems.length}`);
-    return { items: sortedItems, nextToken: token };
+    this.logger.debug(`List incidents response count=${pagedItems.length}`);
+    return { items: pagedItems, nextToken: token };
   }
 
   async findOne(id: string) {

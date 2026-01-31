@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -22,15 +23,22 @@ const defaultForm: CreateIncidentInput = {
 
 export const NewIncidentDialog = () => {
   const queryClient = useQueryClient()
+  const navigate = useNavigate({ from: "/" })
   const [isOpen, setIsOpen] = useState(false)
   const [formState, setFormState] = useState<CreateIncidentInput>(defaultForm)
 
   const createMutation = useMutation({
     mutationFn: createIncident,
-    onSuccess: () => {
+    onSuccess: (incident) => {
       queryClient.invalidateQueries({ queryKey: ["incidents"] })
       setIsOpen(false)
       setFormState(defaultForm)
+      if (incident?.id) {
+        navigate({
+          to: "/incidents/$incidentId",
+          params: { incidentId: incident.id },
+        })
+      }
     },
   })
 

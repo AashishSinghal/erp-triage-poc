@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { Header } from "@/components/incidents/Header";
 import { Filters } from "@/components/incidents/Filters";
 import { IncidentsTable } from "@/components/incidents/IncidentsTable";
 import { fetchIncidents } from "@/services/incidents";
+import type { IncidentListResponse } from "@/types/incident";
 
 export const IncidentsList = () => {
   const searchParams = useSearch({ from: "/" });
@@ -31,7 +33,13 @@ export const IncidentsList = () => {
     return () => clearTimeout(handle);
   }, [navigate, searchInput]);
 
-  const incidentsQuery = useQuery({
+  const incidentsQuery = useInfiniteQuery<
+    IncidentListResponse,
+    Error,
+    InfiniteData<IncidentListResponse>,
+    (string | number | undefined)[],
+    string
+  >({
     queryKey: [
       "incidents",
       search,
@@ -41,7 +49,7 @@ export const IncidentsList = () => {
       sortOrder,
       limit,
     ],
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       fetchIncidents({
         search: search || undefined,
         erpModule: erpModule || undefined,
@@ -49,11 +57,14 @@ export const IncidentsList = () => {
         sortBy,
         sortOrder,
         limit: typeof limit === "number" ? limit : undefined,
+        nextToken: pageParam || undefined,
       }),
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage.nextToken,
   });
 
   const items = useMemo(
-    () => incidentsQuery.data?.items ?? [],
+    () => incidentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [incidentsQuery.data],
   );
 
@@ -119,7 +130,23 @@ export const IncidentsList = () => {
             </div>
           )}
           {!incidentsQuery.isLoading && !incidentsQuery.isError && (
-            <IncidentsTable data={items} />
+            <>
+              <IncidentsTable data={items} />
+              {incidentsQuery.hasNextPage && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
+                    onClick={() => incidentsQuery.fetchNextPage()}
+                    disabled={incidentsQuery.isFetchingNextPage}
+                  >
+                    {incidentsQuery.isFetchingNextPage
+                      ? "Loading..."
+                      : "Load more"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       </main>
