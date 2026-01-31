@@ -12,7 +12,7 @@ import { Environment, ErpModule } from "@/types/incident"
 import type { CreateIncidentInput } from "@/types/incident"
 import { Plus } from "lucide-react"
 
-export const defaultForm: CreateIncidentInput = {
+const defaultForm: CreateIncidentInput = {
   title: "",
   description: "",
   erpModule: ErpModule.AP,
