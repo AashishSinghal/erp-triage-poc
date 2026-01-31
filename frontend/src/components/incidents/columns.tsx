@@ -1,6 +1,7 @@
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef } from "@tanstack/react-table";
 
-import type { Incident } from "@/types/incident"
+import type { Incident } from "@/types/incident";
+import { formatRelative } from "date-fns";
 
 export const incidentColumns: ColumnDef<Incident>[] = [
   {
@@ -43,12 +44,12 @@ export const incidentColumns: ColumnDef<Incident>[] = [
     header: "Updated",
     meta: { className: "hidden lg:table-cell" },
     cell: ({ row }) => {
-      const value = row.original.updatedAt
+      const value = row.original.updatedAt;
       return (
         <span className="hidden lg:inline">
-          {value ? new Date(value).toLocaleString() : "-"}
+          {value ? formatRelative(new Date(value), new Date()) : "-"}
         </span>
-      )
+      );
     },
   },
-]
+];

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatRelative } from "date-fns";
 
 import { fetchIncident } from "@/services/incidents";
 import { Header } from "@/components/incidents/Header";
@@ -15,11 +16,24 @@ export const Route = createFileRoute("/incidents/$incidentId")({
 function IncidentDetail() {
   const { incident } = Route.useLoaderData();
   const createdAt = incident?.createdAt
-    ? new Date(incident.createdAt).toLocaleString()
+    ? formatRelative(new Date(incident.createdAt), new Date())
     : "-";
   const updatedAt = incident?.updatedAt
-    ? new Date(incident.updatedAt).toLocaleString()
+    ? formatRelative(new Date(incident.updatedAt), new Date())
     : "-";
+  const status = incident?.status ?? "UNKNOWN";
+  const statusClass = (() => {
+    switch (status) {
+      case "ENRICHED":
+        return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      case "PENDING":
+        return "border-amber-200 bg-amber-50 text-amber-700";
+      case "FAILED":
+        return "border-red-200 bg-red-50 text-red-700";
+      default:
+        return "border-slate-200 bg-slate-50 text-slate-600";
+    }
+  })();
 
   return (
     <div className="app-shell min-h-screen">
@@ -34,15 +48,22 @@ function IncidentDetail() {
           Back to incidents
         </Link>
         <div className="mb-6 flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-2xl font-semibold text-slate-900">
-            {incident?.title ?? "Incident"}
-          </h2>
-          <div className="text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <h2 className="text-2xl font-semibold text-slate-900">
+              {incident?.title ?? "Incident"}
+            </h2>
+            <span
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase ${statusClass}`}
+            >
+              {status}
+            </span>
+          </div>
+          <span>
             Incident ID:{" "}
             <span className="font-mono text-slate-700">
               {incident?.id ?? "N/A"}
             </span>
-          </div>
+          </span>
         </div>
 
         <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
