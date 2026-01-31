@@ -38,4 +38,10 @@ jobs:
       - name: Deploy
         env:
           TABLE_NAME: ${{ secrets.DYNAMODB_TABLE_NAME || 'incidents' }}
-        run: npx cdk deploy -c tableName=$TABLE_NAME --require-approval never
+          ROLE_NAME: ${{ secrets.IAM_ROLE_NAME }}
+        run: |
+          if [ -n "$ROLE_NAME" ]; then
+            npx cdk deploy -c tableName=$TABLE_NAME -c iamRoleName=$ROLE_NAME --require-approval never
+          else
+            npx cdk deploy -c tableName=$TABLE_NAME --require-approval never
+          fi

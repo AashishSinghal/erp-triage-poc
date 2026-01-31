@@ -6,7 +6,7 @@ Classify incidents into severity (P1, P2, P3) and category (CONFIGURATION, DATA,
 Provide a short summary and a suggested next step.
 Use P1 for outages or severe business impact, P2 for major degradation, P3 for minor issues.
 Return ONLY valid JSON with keys: severity, category, summary, suggestion.
-No extra text, no markdown, no code fences.`; 
+No extra text, no markdown, no code fences.`;
 
 export const createUserPrompt = (title: string, description: string) => {
   return [`Title: ${title}`, `Description: ${description}`].join('\n');

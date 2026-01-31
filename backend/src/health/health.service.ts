@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ListTablesCommand } from '@aws-sdk/client-dynamodb';
-import {
-  createDynamoClient,
-  getIncidentConfig,
-} from '../config';
+import { DescribeTableCommand } from '@aws-sdk/client-dynamodb';
+import { createDynamoClient, getIncidentConfig } from '../config';
 
 export type HealthStatus = 'ok' | 'degraded';
 
@@ -14,7 +11,10 @@ export class HealthService {
   private readonly dynamoClient = createDynamoClient(this.config.aws);
 
   async check() {
-    const server = { status: 'ok' as HealthStatus, timestamp: new Date().toISOString() };
+    const server = {
+      status: 'ok' as HealthStatus,
+      timestamp: new Date().toISOString(),
+    };
 
     const [dynamo] = await Promise.all([this.checkDynamo()]);
 
@@ -33,15 +33,13 @@ export class HealthService {
 
   private async checkDynamo() {
     try {
-      const response = await this.dynamoClient.send(
-        new ListTablesCommand({ Limit: 100 }),
+      await this.dynamoClient.send(
+        new DescribeTableCommand({ TableName: this.config.tableName }),
       );
-      const tables = response.TableNames ?? [];
-      const hasTable = tables.includes(this.config.tableName);
       return {
-        status: hasTable ? 'ok' : 'degraded',
+        status: 'ok',
         table: this.config.tableName,
-        message: hasTable ? 'Table found' : 'Table not found',
+        message: 'Table found',
       };
     } catch (error) {
       return {
@@ -51,6 +49,4 @@ export class HealthService {
       };
     }
   }
-
-  
 }

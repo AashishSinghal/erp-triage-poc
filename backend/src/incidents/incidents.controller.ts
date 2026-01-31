@@ -25,7 +25,10 @@ export class IncidentController {
   }
 
   @Get()
-  findAll(@Query('limit') limit?: string, @Query('nextToken') nextToken?: string) {
+  findAll(
+    @Query('limit') limit?: string,
+    @Query('nextToken') nextToken?: string,
+  ) {
     const parsedLimit = limit ? Number(limit) : undefined;
     return this.incidentService.findAll(parsedLimit, nextToken);
   }
@@ -40,7 +43,10 @@ export class IncidentController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateIncidentDto: UpdateIncidentDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateIncidentDto: UpdateIncidentDto,
+  ) {
     return this.incidentService.update(id, updateIncidentDto);
   }
 

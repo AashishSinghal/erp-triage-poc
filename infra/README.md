@@ -28,6 +28,16 @@ cd infra
 npx cdk deploy -c tableName=incidents
 ```
 
+## Attach policy to existing IAM role (optional)
+
+If you already have an EC2 role and want CDK to add the DynamoDB
+`DescribeTable` permission, pass the role name:
+
+```bash
+cd infra
+npx cdk deploy -c tableName=incidents -c iamRoleName=erp-triage-dynamodb-iam
+```
+
 ## GitHub Actions (optional)
 
 If you enable the `Deploy Infra (CDK)` workflow, set these repo secrets:
@@ -36,6 +46,7 @@ If you enable the `Deploy Infra (CDK)` workflow, set these repo secrets:
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_REGION` (optional, defaults to `us-east-1`)
 - `DYNAMODB_TABLE_NAME` (optional, defaults to `incidents`)
+- `IAM_ROLE_NAME` (optional, for attaching `DescribeTable` policy)
 
 The workflow deploys only when `infra/**` changes.
 

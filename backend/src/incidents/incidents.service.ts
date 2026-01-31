@@ -1,8 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  ScanCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 import { CreateIncidentDto } from './dto/create-incident.dto';
-import { IncidentCategory, IncidentStatus, Severity } from './dto/incident.enums';
+import {
+  IncidentCategory,
+  IncidentStatus,
+  Severity,
+} from './dto/incident.enums';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { IncidentEntity } from './entities/incident.entity';
 import { createDynamoClient, getIncidentConfig } from '../config';
@@ -16,6 +26,7 @@ import {
 const INCIDENT_PK_PREFIX = 'INCIDENT#';
 const INCIDENT_SK = 'METADATA';
 const DEFAULT_PAGE_LIMIT = 25;
+type IncidentItem = IncidentEntity & { PK: string; SK: string };
 
 @Injectable()
 export class IncidentService {
@@ -84,17 +95,20 @@ export class IncidentService {
       createUserPrompt(incident.title, incident.description),
     );
     const enrichment = this.parseAiResponse(aiContent);
-    const { updateExpression, expressionAttributeNames, expressionAttributeValues } =
-      buildUpdateExpression(
-        {
-          status: IncidentStatus.ENRICHED,
-          severity: enrichment.severity,
-          category: enrichment.category,
-          summary: enrichment.summary ?? null,
-          suggestion: enrichment.suggestion ?? null,
-        },
-        { addUpdatedAt: true },
-      );
+    const {
+      updateExpression,
+      expressionAttributeNames,
+      expressionAttributeValues,
+    } = buildUpdateExpression(
+      {
+        status: IncidentStatus.ENRICHED,
+        severity: enrichment.severity,
+        category: enrichment.category,
+        summary: enrichment.summary ?? null,
+        suggestion: enrichment.suggestion ?? null,
+      },
+      { addUpdatedAt: true },
+    );
 
     await this.docClient.send(
       new UpdateCommand({
@@ -114,7 +128,9 @@ export class IncidentService {
     incident.category = enrichment.category;
     incident.summary = enrichment.summary;
     incident.suggestion = enrichment.suggestion;
-    incident.updatedAt = (expressionAttributeValues[':updatedAt'] as string) ?? incident.updatedAt;
+    const updatedAtValue = expressionAttributeValues[':updatedAt'];
+    incident.updatedAt =
+      typeof updatedAtValue === 'string' ? updatedAtValue : incident.updatedAt;
 
     this.logger.log(`Incident created incidentId=${id}`);
     return incident;
@@ -140,7 +156,10 @@ export class IncidentService {
 
     const items = (response.Items ?? []).map(({ PK, SK, ...rest }) => rest) as IncidentEntity[];
     const token = response.LastEvaluatedKey
-      ? Buffer.from(JSON.stringify(response.LastEvaluatedKey), 'utf-8').toString('base64')
+      ? Buffer.from(
+          JSON.stringify(response.LastEvaluatedKey),
+          'utf-8',
+        ).toString('base64')
       : undefined;
 
     this.logger.debug(`List incidents response count=${items.length}`);
@@ -166,13 +185,16 @@ export class IncidentService {
 
     const { PK, SK, ...rest } = response.Item;
     this.logger.log(`Incident fetched incidentId=${id}`);
-    return rest as IncidentEntity;
+    return rest;
   }
 
   async update(id: string, updateIncidentDto: UpdateIncidentDto) {
     this.logger.debug(`Update incident request received incidentId=${id}`);
-    const { updateExpression, expressionAttributeNames, expressionAttributeValues } =
-      buildUpdateExpression<UpdateIncidentDto>(updateIncidentDto);
+    const {
+      updateExpression,
+      expressionAttributeNames,
+      expressionAttributeValues,
+    } = buildUpdateExpression<UpdateIncidentDto>(updateIncidentDto);
 
     const response = await this.docClient.send(
       new UpdateCommand({
@@ -191,7 +213,7 @@ export class IncidentService {
     const attributes = response.Attributes ?? {};
     const { PK, SK, ...rest } = attributes;
     this.logger.log(`Incident updated incidentId=${id}`);
-    return rest as IncidentEntity;
+    return rest;
   }
 
   async remove(id: string) {
