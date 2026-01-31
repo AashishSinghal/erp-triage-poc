@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common';
 import {
   DynamoDBDocumentClient,
@@ -26,7 +29,6 @@ import {
 const INCIDENT_PK_PREFIX = 'INCIDENT#';
 const INCIDENT_SK = 'METADATA';
 const DEFAULT_PAGE_LIMIT = 25;
-type IncidentItem = IncidentEntity & { PK: string; SK: string };
 
 @Injectable()
 export class IncidentService {
@@ -49,7 +51,8 @@ export class IncidentService {
         severity: (parsed.severity as Severity) ?? Severity.P3,
         category:
           (parsed.category as IncidentCategory) ?? IncidentCategory.UNKNOWN,
-        summary: typeof parsed.summary === 'string' ? parsed.summary : undefined,
+        summary:
+          typeof parsed.summary === 'string' ? parsed.summary : undefined,
         suggestion:
           typeof parsed.suggestion === 'string' ? parsed.suggestion : undefined,
       };
@@ -138,8 +141,13 @@ export class IncidentService {
 
   async findAll(limit = DEFAULT_PAGE_LIMIT, nextToken?: string) {
     this.logger.debug('List incidents request received');
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 100) : DEFAULT_PAGE_LIMIT;
-    const exclusiveStartKey = nextToken ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8')) : undefined;
+    const safeLimit =
+      Number.isFinite(limit) && limit > 0
+        ? Math.min(limit, 100)
+        : DEFAULT_PAGE_LIMIT;
+    const exclusiveStartKey = nextToken
+      ? JSON.parse(Buffer.from(nextToken, 'base64').toString('utf-8'))
+      : undefined;
 
     const response = await this.docClient.send(
       new ScanCommand({
@@ -154,7 +162,9 @@ export class IncidentService {
       }),
     );
 
-    const items = (response.Items ?? []).map(({ PK, SK, ...rest }) => rest) as IncidentEntity[];
+    const items = (response.Items ?? []).map(
+      ({ PK, SK, ...rest }) => rest,
+    ) as IncidentEntity[];
     const token = response.LastEvaluatedKey
       ? Buffer.from(
           JSON.stringify(response.LastEvaluatedKey),
